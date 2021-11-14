@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Spire Lemur-2</title>
+    <link rel="icon" href="img/spire_symbol_blk_bg.png" sizes="16x16" type="image/png">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <meta charset="utf-8">
+    <link type="text/css" rel="stylesheet" href="main.css">
+    <!-- check for WebGL browser compatability -->
+    <script src="./libs/Detector.js"></script>
+  </head>
+
+  <body>
+    <div id="headline">
+    <a href="https://spire.com" class="link1" target="_blank" rel="noopener">Spire Global, Inc.</a> -- <a href="https://spire.com/spirepedia/lemur" class="link2" target="_blank" rel="noopener">Lemur-2</a> <a href="https://spire.com/spirepedia/cubesat" class="link2" target="_blank" rel="noopener">CubeSat</a>
+    </div>
+    <div id="lemur-text" class="info">
+      The Low Earth Multi-Use Receiver (LEMUR) is Spire's 3U CubeSat platform used to track maritime, aviation, and weather activity from space. Today, each 10x10x34.5 cm LEMUR is designed, built, and operated in-house by Spire. Less than 5kg, the LEMUR is powered by a deployable solar array, flying at 400-650 km in orbit for about 2 years. As of July 2018, each LEMUR carries an AIS, GNSS-RO, and ADS-B receiver.
+    </div>
+    <div id="cubesat-text" class="info">
+      A CubeSat is a small satellite consisting of one or several 10x10x10 cm units, no more than 1.33 kilograms per unit. CubeSats can range from 1 Unit or "1U" to 12 Units or "12U." Spire's LEMUR satellites are 10x10x30 cm or 3U. CubeSats are known for being relatively inexpensive to build by using commercial off-the-shelf parts, and much less expensive to launch as secondary payloads than conventional large satellites. Initially designed for academia, CubeSats are being adapted for commercial applications, largely for Earth observation. Most CubeSats operate no higher than low Earth orbit. In October 2018, NASA's MarCO mission captured an image of Mars from a CubeSat, the first deep-space experiment for these small satellites.
+    </div>
+    <script type="module">
+
+      import * as THREE from './threejs/three.module.js';
+
+      import { DDSLoader } from './threejs/DDSLoader.js';
+      import { MTLLoader } from './threejs/MTLLoader.js';
+      import { OBJLoader } from './threejs/OBJLoader.js';
+      // import { TrackballControls } from './threejs/TrackballControls.js';
+      // import { FlyControls } from './threejs/FlyControls.js';
+      // import { OrbitControls } from './threejs/OrbitControls.js';
+      import { ObjectControls } from './libs/ObjectControls.js';
+
+      var container;
+      var controls;
+
+      var camera, scene, renderer;
+
+      var mouseX = 0, mouseY = 0;
+
+      var windowHalfX = window.innerWidth / 2;
+      var windowHalfY = window.innerHeight / 2;
+
+      // the object to manipulate later
+      window.LEMUR = null;
+
+
+      init();
+      animate();
+
+
+      function init() {
+
+        container = document.createElement( 'div' );
+        document.body.appendChild( container );
+
+        camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+        camera.position.z = 500;
+        //camera.position.x = -1000;
+        // Math.PI / 180 converts a degrees into radians.
+        //camera.rotation.y = 180 * Math.PI / 180;
+
+        // scene
+
+        scene = new THREE.Scene();
+
+        var ambientLight = new THREE.AmbientLight( 0xcccccc, 0.4 );
+        scene.add( ambientLight );
+
+        var pointLight = new THREE.PointLight( 0xffffff, 0.8 );
+        camera.add( pointLight );
+        scene.add( camera );
+
+        // model
+
+        var onProgress = function ( xhr ) {
+
+          if ( xhr.lengthComputable ) {
+
+            var percentComplete = xhr.loaded / xhr.total * 100;
+            console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
+
+          }
+
+        };
+
+        var onError = function () { };
+
+        var manager = new THREE.LoadingManager();
+        manager.addHandler( /\.dds$/i, new DDSLoader() );
+
+        // comment in the following line and import TGALoader if your asset uses TGA textures
+        // manager.addHandler( /\.tga$/i, new TGALoader() );
+
+        new MTLLoader( manager )
+          .setPath( 'models/obj/lemur/' )
+          .load( 'lemur.mtl', function ( materials ) {
+
+            materials.preload();
+
+            new OBJLoader( manager )
+              .setMaterials( materials )
+              .setPath( 'models/obj/lemur/' )
+              .load( 'lemur.obj', function ( object ) {
+
+                // set the global object
+                window.LEMUR = object;
+
+                object.position.y = 0;
+                scene.add( object );
+                camera.lookAt( object );
+
+                /** instantiate ObjectControls**/
+
+                controls = new ObjectControls(camera, renderer.domElement, object);
+                // console.log(controls)
+                controls.setDistance(8, 500); // set min - max distance for zoom
+                controls.setZoomSpeed(2.0); // set zoom speed
+                controls.enableVerticalRotation();
+                controls.setMaxVerticalRotationAngle(Math.PI / 4, Math.PI / 4);
+                controls.setRotationSpeed(0.05);
+
+              }, onProgress, onError );
+
+          } );
+
+        //
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        container.appendChild( renderer.domElement );
+
+        // controls
+
+        //controls = new OrbitControls( camera, renderer.domElement );
+
+        document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+        //
+
+        window.addEventListener( 'resize', onWindowResize, false );
+
+      }
+
+      function onWindowResize() {
+
+        windowHalfX = window.innerWidth / 2;
+        windowHalfY = window.innerHeight / 2;
+
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize( window.innerWidth, window.innerHeight );
+
+      }
+
+      function onDocumentMouseMove( event ) {
+
+        mouseX = ( event.clientX - windowHalfX ) / 2;
+        mouseY = ( event.clientY - windowHalfY ) / 2;
+
+      }
+
+      //
+
+      function animate() {
+        
+        requestAnimationFrame( animate );
+        render();
+
+      }
+
+      function render() {
+
+        camera.position.x += ( mouseX - camera.position.x ) * .05;
+        camera.position.y += ( - mouseY - camera.position.y ) * .05;
+
+        camera.lookAt( scene.position );
+
+        renderer.render( scene, camera );
+
+      }
+
+    </script>
+
+  </body>
+</html>
